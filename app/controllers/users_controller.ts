@@ -2,12 +2,12 @@ import type { HttpContext } from '@adonisjs/core/http'
 import User from '#models/user'
 
 export default class UsersController {
-    async index(ctx: HttpContext) {
+    async index() {
 		const users = await User.all()
 		return users
     }
 
-	async show({response, params }: HttpContext) {
+	async show({response, params}: HttpContext) {
 		if(params.id){
 			const user = await User.find(params.id)
 			
