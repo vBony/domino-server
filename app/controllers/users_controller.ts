@@ -46,6 +46,7 @@ export default class UsersController {
 							.replace(/\s+/g, '_')
 							.toLowerCase();
 
-		return response.status(200)
+		let success = User.create(data)
+		return success
 	}
 }
