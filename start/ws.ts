@@ -20,6 +20,11 @@ app.ready(() => {
 	const connectedUsers = {};
 	io.of('/play').on('connection', (socket) => {
 		const userID = socket.handshake.query.userID;
+
+		if(connectedUsers.length == 4){
+			// Jogadores máximos atingido
+			socket.disconnect()
+		}
 		
 		if (connectedUsers[userID]) {
 			// Se já houver uma conexão para esse usuário, desconecte o socket anterior
