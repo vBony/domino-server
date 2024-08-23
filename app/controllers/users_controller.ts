@@ -35,7 +35,7 @@ export default class UsersController {
 		}
 	}
 
-	async create({request, response}: HttpContext){
+	async create({request}: HttpContext){
 		let data = request.body()
 		
 		data = await createValidator.validate(data)

@@ -2,7 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import User from '#models/user'
 
 export default class AuthController {
-    async index({request, response}: HttpContext) {
+    async index({request}: HttpContext) {
 		const userR = request.only(['nickname', 'password'])
 
         const user = await User.verifyCredentials(userR.nickname, userR.password)
