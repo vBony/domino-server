@@ -40,7 +40,6 @@ export default class UsersController {
 		
 		data = await createValidator.validate(data)
 
-		data.password = await hash.make(data.password)
 		data.nickname = data.nickname
 							.replace(/[^a-zA-Z0-9]+/g, ' ')
 							.replace(/\s+/g, '_')
