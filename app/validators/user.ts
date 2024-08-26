@@ -1,5 +1,5 @@
 import vine, { SimpleMessagesProvider }  from '@vinejs/vine'
-import {JSONAPIErrorReporter} from '../helpers/json_api_error_reporter.js'
+import {JSONAPIErrorReporter} from '#helpers/json_api_error_reporter'
 
 vine.errorReporter = () => new JSONAPIErrorReporter()
 

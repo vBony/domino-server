@@ -1,6 +1,10 @@
 import app from '@adonisjs/core/services/app'
 import { Server } from 'socket.io'
 import server from '@adonisjs/core/services/server'
+import GameController from '#controllers/game_controller'
+const game = new GameController()
+
+import Player from "#entities/player"
 
 app.ready(() => {
 	const io = new Server(server.getNodeServer(), {
@@ -17,36 +21,50 @@ app.ready(() => {
 		console.error('Socket.io Error:', error);
 	});
 
-	const connectedUsers = {};
-	io.of('/play').on('connection', (socket) => {
-		const userID = socket.handshake.query.userID;
+	let players = {}
+	let playersInstance = {}
+	io.of('/play').on('connection', async (socket) => {
+		const idUser = socket.handshake.query.userID;
 
-		if(connectedUsers.length == 4){
-			// Jogadores máximos atingido
-			socket.disconnect()
+		// Evento quando o usuário desconecta
+		socket.on('disconnect', () => {
+			console.log(`User ${idUser} disconnected`);
+			// Remove o usuário do jogo ao desconectar
+			delete playersInstance[idUser]; 
+			delete players[idUser]
+		});
+
+		let player = new Player()
+		const totalPlayers = io.of("/play").sockets.size
+		let reconectando = false
+
+		if (playersInstance[idUser]) {
+			// Se já houver uma conexão para esse usuário, desconecta o socket anterior
+			reconectando = true // Flag para possibilitar reconectar
+			playersInstance[idUser].disconnect();
 		}
-		
-		if (connectedUsers[userID]) {
-			// Se já houver uma conexão para esse usuário, desconecte o socket anterior
-			connectedUsers[userID].disconnect();
+
+		// Apenas 4 jogadores
+		if(totalPlayers > 1 && !reconectando){
+			socket.emit('game:full');
+			socket.disconnect()
 		}
 
 		// Armazene o socket atual
-		connectedUsers[userID] = socket;
-		console.log(`User ${userID} connected with socket ID: ${socket.id}`);
+		player.socketId = socket.id
+		player.posicaoMesa = totalPlayers
+		player.id = parseInt(idUser)
 
-		socket.on('disconnect', () => {
-			console.log(`User ${userID} disconnected`);
-			delete connectedUsers[userID]; // Remova o usuário do mapa ao desconectar
-		});
+		playersInstance[idUser] = socket;
+		players[idUser] = player
 
-		socket.on('play', (data) => {
-			console.log(`Play event received from user ${userID}`);
+		console.log(`User ${idUser} connected with socket ID: ${socket.id}`);
+		game.playerJoined({socket, players})
 
-			console.log(data.peca)
 
-			// Enviar uma resposta para o cliente
-			socket.emit('playResponse', { message: 'Play event received and processed' });
+		socket.on('game:play', async (data) => {
+			// Chame o método do controller passando o socket, data e userID
+			await game.handlePlay({ socket, data, idUser });
 		});
 	});
 })
