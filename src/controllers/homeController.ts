@@ -5,7 +5,7 @@ import {sequelize} from '../instances/mysql'
 export const home = async (req:Request, res:Response)=>{
     let users = await User.findAll()
 
-    res.send(JSON.stringify(users))
+    return res.send(JSON.stringify(users))
 }
 
 export const contato = (req:Request, res:Response)=>{
