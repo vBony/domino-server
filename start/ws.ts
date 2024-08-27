@@ -2,6 +2,7 @@ import app from '@adonisjs/core/services/app'
 import { Server } from 'socket.io'
 import server from '@adonisjs/core/services/server'
 import GameController from '#controllers/game_controller'
+import User from "#models/user";
 const game = new GameController()
 
 import Player from "#entities/player"
@@ -25,6 +26,42 @@ app.ready(() => {
 	let playersInstance = {}
 	io.of('/play').on('connection', async (socket) => {
 		const idUser = socket.handshake.query.userID;
+		let player = new Player()
+		let totalPlayers = io.of("/play").sockets.size
+		let reconnecting = false
+
+		if (playersInstance[idUser]) {
+			// Se já houver uma conexão para esse usuário, desconecta o socket anterior
+			reconnecting = true // Flag para possibilitar reconectar
+			playersInstance[idUser].disconnect();
+			delete playersInstance[idUser];
+		}
+
+		// Apenas 4 jogadores
+		if(totalPlayers > 4 && !reconnecting){
+			socket.emit('game:full');
+			socket.disconnect()
+			return
+		}
+
+		// Armazene o socket atual
+		player.socketId = socket.id
+		player.tablePosition = totalPlayers
+		player.id = parseInt(idUser)
+		player.model = await User.find(player.id)
+
+		playersInstance[idUser] = socket;
+		players[idUser] = player
+
+		console.log(`User ${idUser} connected with socket ID: ${socket.id}`);
+		// await game.playerJoined({socket, players})
+		socket.broadcast.emit('player:joined', { players });
+
+
+		socket.on('game:play', async (data) => {
+			// Chame o método do controller passando o socket, data e userID
+			await game.handlePlay({ socket, data, idUser });
+		});
 
 		// Evento quando o usuário desconecta
 		socket.on('disconnect', () => {
@@ -32,39 +69,8 @@ app.ready(() => {
 			// Remove o usuário do jogo ao desconectar
 			delete playersInstance[idUser]; 
 			delete players[idUser]
+			socket.broadcast.emit('player:disconnected', { players });
 		});
 
-		let player = new Player()
-		const totalPlayers = io.of("/play").sockets.size
-		let reconectando = false
-
-		if (playersInstance[idUser]) {
-			// Se já houver uma conexão para esse usuário, desconecta o socket anterior
-			reconectando = true // Flag para possibilitar reconectar
-			playersInstance[idUser].disconnect();
-		}
-
-		// Apenas 4 jogadores
-		if(totalPlayers > 1 && !reconectando){
-			socket.emit('game:full');
-			socket.disconnect()
-		}
-
-		// Armazene o socket atual
-		player.socketId = socket.id
-		player.posicaoMesa = totalPlayers
-		player.id = parseInt(idUser)
-
-		playersInstance[idUser] = socket;
-		players[idUser] = player
-
-		console.log(`User ${idUser} connected with socket ID: ${socket.id}`);
-		game.playerJoined({socket, players})
-
-
-		socket.on('game:play', async (data) => {
-			// Chame o método do controller passando o socket, data e userID
-			await game.handlePlay({ socket, data, idUser });
-		});
 	});
 })
