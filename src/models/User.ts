@@ -3,7 +3,8 @@ import { sequelize } from '../instances/mysql'
 
 export interface UserInstance extends Model {
     id: number
-    nickname: string
+    nickname: string,
+    password: string
 }
 
 export const User = sequelize.define<UserInstance>('EUser', {
@@ -16,6 +17,10 @@ export const User = sequelize.define<UserInstance>('EUser', {
     nickname: {
         type: DataTypes.STRING,
         field: 'nickname'
+    },
+    password: {
+        type: DataTypes.STRING,
+        field: 'password'
     }
 }, 
 {
