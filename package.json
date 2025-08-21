@@ -1,87 +1,34 @@
 {
-  "name": "my-adonisjs-app",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "license": "UNLICENSED",
+  "name": "minha-carteira",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
   "scripts": {
-    "start": "node bin/server.js",
-    "build": "node ace build",
-    "dev": "node ace serve --hmr",
-    "test": "node ace test",
-    "lint": "eslint .",
-    "format": "prettier --write .",
-    "typecheck": "tsc --noEmit"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "serve": "nodemon src/server.ts"
   },
-  "imports": {
-    "#controllers/*": "./app/controllers/*.js",
-    "#exceptions/*": "./app/exceptions/*.js",
-    "#models/*": "./app/models/*.js",
-    "#mails/*": "./app/mails/*.js",
-    "#services/*": "./app/services/*.js",
-    "#listeners/*": "./app/listeners/*.js",
-    "#events/*": "./app/events/*.js",
-    "#middleware/*": "./app/middleware/*.js",
-    "#validators/*": "./app/validators/*.js",
-    "#providers/*": "./providers/*.js",
-    "#policies/*": "./app/policies/*.js",
-    "#abilities/*": "./app/abilities/*.js",
-    "#database/*": "./database/*.js",
-    "#start/*": "./start/*.js",
-    "#tests/*": "./tests/*.js",
-    "#config/*": "./config/*.js",
-    "#helpers/*": "./app/helpers/*.js",
-    "#entities/*": "./app/entities/*.js"
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/express": "^4.17.13",
+    "bcrypt": "^5.0.1",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^10.0.0",
+    "express": "^4.19.2",
+    "express-validator": "^6.14.0",
+    "moment": "^2.30.1",
+    "moment-timezone": "^0.5.45",
+    "mysql2": "^2.3.3",
+    "nodemon": "^3.1.4",
+    "sequelize": "^6.12.0-beta.3",
+    "socket.io": "^4.8.1"
   },
   "devDependencies": {
-    "@adonisjs/assembler": "^7.7.0",
-    "@adonisjs/eslint-config": "^1.3.0",
-    "@adonisjs/prettier-config": "^1.3.0",
-    "@adonisjs/tsconfig": "^1.3.0",
-    "@japa/api-client": "^2.0.3",
-    "@japa/assert": "^3.0.0",
-    "@japa/plugin-adonisjs": "^3.0.1",
-    "@japa/runner": "^3.1.4",
-    "@swc/core": "^1.7.6",
-    "@types/luxon": "^3.4.2",
-    "@types/node": "^22.1.0",
-    "eslint": "^8.57.0",
-    "hot-hook": "^0.2.6",
-    "pino-pretty": "^11.2.2",
-    "prettier": "^3.3.3",
-    "ts-node": "^10.9.2",
-    "typescript": "~5.5"
-  },
-  "dependencies": {
-    "@adonisjs/auth": "^9.2.3",
-    "@adonisjs/core": "^6.12.1",
-    "@adonisjs/cors": "^2.2.1",
-    "@adonisjs/lucid": "^21.2.0",
-    "@vinejs/vine": "^2.1.0",
-    "luxon": "^3.5.0",
-    "mysql2": "^3.11.0",
-    "reflect-metadata": "^0.2.2",
-    "socket.io": "^4.7.5"
-  },
-  "hotHook": {
-    "boundaries": [
-      "./app/controllers/**/*.ts",
-      "./app/middleware/*.ts"
-    ]
-  },
-  "overrides": {
-    "strtok3": "8.0.1"
-  },
-  "resolutions": {
-    "strtok3": "8.0.1"
-  },
-  "pnpm": {
-    "overrides": {
-      "strtok3": "8.0.1"
-    }
-  },
-  "eslintConfig": {
-    "extends": "@adonisjs/eslint-config/app"
-  },
-  "prettier": "@adonisjs/prettier-config"
+    "@types/bcrypt": "^5.0.2",
+    "@types/cors": "^2.8.12",
+    "@types/sequelize": "^4.28.10",
+    "@types/socket.io": "^3.0.1"
+  }
 }
