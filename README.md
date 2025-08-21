@@ -1,1 +1,1 @@
-minha-carteira-server-node
+Jogo competitivo de dominó.
