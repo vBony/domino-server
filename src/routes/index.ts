@@ -19,6 +19,7 @@ router.post('/user', authValidator.register, authController.register)
  * Auth
  */
 router.post('/auth', authController.login)
+router.get('/auth/get-user', authController.getByToken)
 
 
 export default router
