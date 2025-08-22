@@ -1,10 +1,16 @@
 // @ts-nocheck
 import { Server, Socket } from "socket.io";
+import setupTableSockets from "./table";
 
-let salas = []
+const maxPlayersPerTable = 4
+let table = {}
 
 export default function setupGameSockets(io: Server) {
-    io.on("connection", (socket: Socket) => {
-        
-    });
+    const gameNamespace = io.of("/game");
+
+    gameNamespace.on('connection', async (socket) => {
+        const userID = socket.handshake.query.userID as string;
+
+        setupTableSockets(gameNamespace, socket);
+    })
 }
