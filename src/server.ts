@@ -3,7 +3,7 @@ import mainRoutes from './routes/index'
 import dotenv from 'dotenv'
 import cors from 'cors'
 import bodyParser from 'body-parser'
-import setupGameSockets from "./sockets/game";
+import setupGameSockets from "./sockets/game_server";
 import { Server } from "socket.io";
 import http from "http";
 

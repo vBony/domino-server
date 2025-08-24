@@ -8,15 +8,15 @@ let players = []
 let totalPlayers = 0
 
 export default async function setupTableSockets(game, socket) {
-    const userID = socket.handshake.query.userID as string;
-
-    // Checa se o jogador já está na mesa
-    let existingPlayerIndex = players.findIndex(p => p.id == userID);
+    const userID = socket.handshake.query.userID as string;    
 
     if (!userID) {
         socket.disconnect();
         return;
     }
+
+    // Checa se o jogador já está na mesa
+    let existingPlayerIndex = players.findIndex(p => p.id == userID);
 
     // Checa se a mesa está cheia
     if (totalPlayers >= maxPlayersPerTable && existingPlayerIndex === -1) {
@@ -58,12 +58,10 @@ export default async function setupTableSockets(game, socket) {
     totalPlayers = players.length
 
     if(existingPlayerIndex === -1){
-        console.log(`úsuario ${userID} conectado, total: ${totalPlayers}`)
+        console.log(`úsuario ${userID} conectado`)
     }else{
-        console.log(`úsuario ${userID} voltou ao jogo, total: ${totalPlayers}`)
+        console.log(`úsuario ${userID} voltou ao jogo`)
     }
-
-    let playerIndex = players.findIndex(p => p.id == userID);
 
     socket.join(tableName);
 
@@ -74,11 +72,11 @@ export default async function setupTableSockets(game, socket) {
 
     // Saiu da mesa
     socket.on("disconnect", () => {
-        totalPlayers--
+        const index = players.findIndex(p => p.id == userID);
 
-        if(existingPlayerIndex === -1){
-            console.log(`úsuario ${userID} desconectado, total: ${totalPlayers}`)
-            players[playerIndex].online = false;
+        if (index !== -1) {
+            players[index].online = false;
+            console.log(`usuário ${userID} desconectado, total: ${players.length}`);
         }
 
         game.to(tableName).emit("player_left", {
