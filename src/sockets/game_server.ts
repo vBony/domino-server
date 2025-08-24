@@ -1,16 +1,18 @@
 // @ts-nocheck
 import { Server, Socket } from "socket.io";
-import setupTableSockets from "./table";
+import Table from "./table";
 
 const maxPlayersPerTable = 4
 let table = {}
+const tableCode = 'table'
 
 export default function setupGameSockets(io: Server) {
-    const gameNamespace = io.of("/game");
+    const queue = io.of("/queue");
 
-    gameNamespace.on('connection', async (socket) => {
-        const userID = socket.handshake.query.userID as string;
+    queue.on('connection', async (playerConnection) => {
+        const userID = playerConnection.handshake.query.userID as string;
 
-        setupTableSockets(gameNamespace, socket);
+        const table = new Table(tableCode, queue)
+        table.addPlayer(userID, playerConnection)
     })
 }
