@@ -2,7 +2,11 @@ export interface PlayerInterface {
     id: string
     name: string
     idSocket: string
-    stones: number[] // ids das pedras que o player tem
+    stones: {
+        id?: number,
+        left?: number,
+        right?: number
+    }[]
     online: boolean
 }
 
@@ -20,6 +24,7 @@ export interface BoardStoneInterface {
 }
 
 export interface TableInterface {
+    code: string,
     players: PlayerInterface[] // { playerId: Player }
     board: BoardStoneInterface[] // pedras na mesa em ordem
     moves: Move[] // histórico das jogadas
@@ -32,7 +37,7 @@ export async function loadTable(tableName: string) {
     if(tables[tableName]){
         return tables[tableName];
     }else{
-        return createEmptyTable()
+        return createEmptyTable(tableName)
     }
 }
 
@@ -40,8 +45,9 @@ export async function saveTable(tableName: string, data: any) {
     tables[tableName] = data;
 }
 
-function createEmptyTable(): TableInterface {
+function createEmptyTable(tableName:string): TableInterface {
     return {
+        code: tableName,
         players: [],
         board: [],
         moves: [],

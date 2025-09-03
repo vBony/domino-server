@@ -2,8 +2,9 @@ import { Server, Socket } from "socket.io";
 import { User } from "../models/User";
 import { saveTable, loadTable } from "../storage/table";
 import {TableInterface} from "../storage/table"
+import { startGame } from "./game";
 
-const maxPlayersPerTable: number = 4
+const maxPlayersPerTable: number = 2
 const socketConnections = new Map<string, Socket>();
 
 export async function addPlayer(
@@ -39,7 +40,6 @@ export async function addPlayer(
 
         // renew socket on reconenct
         const sockets = await server.in(tableCode).fetchSockets();
-        console.log(`aaefaef`, sockets)
 
         const oldSocket = sockets.find(s => s.id === oldSocketId);
         if (oldSocket) {
@@ -74,7 +74,7 @@ export async function addPlayer(
     });
 
     if(table.players.length === maxPlayersPerTable){
-        // startGame()
+        startGame(table, connection, server)
     }
 
     // left from table
