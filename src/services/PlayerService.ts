@@ -43,15 +43,31 @@ export class PlayerService {
     return { user, token: this.signToken({ userId: user.id, username: user.nickname }) };
   }
 
-  // Cria um usuario descartavel so para permitir testar o multiplayer sem
-  // exigir uma tela de cadastro completa (fica para uma proxima rodada).
-  // O apelido sugerido pelo cliente e sempre usado como veio - guests nao
-  // competem por unicidade de nome (nem entre si, nem com contas reais),
-  // so caem para um nome aleatorio se nada for informado.
+  // Sem tela de cadastro completa ainda, entao este e o unico fluxo de
+  // entrada usado pelo client. Regra pedida pelo usuario, "por enquanto":
+  // - Nome informado: procura por esse nickname em TODA a tabela (guest ou
+  //   nao) e loga como quem encontrar, tipo um login sem senha; se nao
+  //   encontrar, cria um usuario novo com esse nome (marcado isGuest).
+  // - Nome nao informado: sempre cria um guest novo com nome aleatorio.
+  //
+  // Risco de seguranca aceito conscientemente pra esta fase: como a busca
+  // nao filtra por isGuest, se alguem registrar uma conta com senha
+  // (POST /auth/register) e outra pessoa digitar o mesmo nickname aqui,
+  // ela entra como aquela conta sem digitar senha nenhuma. Nao e um
+  // problema pratico agora porque o client so chama este endpoint (nunca
+  // register/login), mas precisa ser revisto antes de existir uma tela de
+  // cadastro/login de verdade.
   static async loginAsGuest(nicknameHint?: string) {
     const trimmedHint = nicknameHint?.trim().slice(0, 20);
-    const username = trimmedHint && trimmedHint.length > 0 ? trimmedHint : `Guest-${randomUUID().slice(0, 6)}`;
 
+    if (trimmedHint) {
+      const existing = await prisma.user.findFirst({ where: { nickname: trimmedHint } });
+      if (existing) {
+        return { user: existing, token: this.signToken({ userId: existing.id, username: existing.nickname }) };
+      }
+    }
+
+    const username = trimmedHint && trimmedHint.length > 0 ? trimmedHint : `Guest-${randomUUID().slice(0, 6)}`;
     const user = await prisma.user.create({ data: { nickname: username, isGuest: true } });
     return { user, token: this.signToken({ userId: user.id, username: user.nickname }) };
   }
