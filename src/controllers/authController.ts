@@ -1,74 +1,57 @@
 import { Request, Response } from "express";
-import {User} from '../models/User'
-import bycript from "bcrypt"
-import AccessTokenManager from "../helpers/token_manager";
 import { validationResult } from "express-validator";
-import messageHelper from "../helpers/messages";
-import { AccessTokens } from "../models/AccessTokens";
+import { AuthedRequest } from "../middlewares/auth";
+import { PlayerService } from "../services/PlayerService";
 
-
-export const login = async (req:Request, res:Response)=>{
-    const {nickname, password} = req.body
-
-    let user = await User.findOne({where: {nickname: nickname}})
-
-    
-    if(user){
-        const hashCompare = await bycript.compare(password, user.password) 
-        
-        if(hashCompare){
-            const token = await AccessTokenManager.create(user.id)
-            return res.send({token: token})
-        }
-    }
-
-    return res.status(500).send({message: "Invalid credentials"})
+function toUserDTO(user: { id: string; nickname: string }) {
+  return { id: user.id, nickname: user.nickname };
 }
 
 export async function register(req: Request, res: Response) {
-    const errors = validationResult(req);
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.mapped() });
+  }
 
-    if (!errors.isEmpty()) {
-        return res.json({ error: messageHelper.get(errors.mapped()) });
+  try {
+    const { nickname, password } = req.body;
+    const { user, token } = await PlayerService.register(nickname, password);
+    return res.status(201).json({ user: toUserDTO(user), token });
+  } catch (err) {
+    if (err instanceof Error && err.message === "nickname_taken") {
+      return res.status(409).json({ message: "Este nickname já está em uso" });
     }
-
-    const findUserByNickname = await User.findOne({ where: { nickname: req.body.nickname } });
-
-    if(findUserByNickname){
-        return res.json({ error: {nickname: "Nome de usuário em uso"} });
-    }
-
-    let model = req.body
-    model.password = await bycript.hash(model.password, 2)
-    const user = await User.create(req.body)
-
-    if(user){
-        return res.status(200)
-    }
+    return res.status(500).json({ message: "Erro ao registrar usuário" });
+  }
 }
 
-export async function getByToken(req: Request, res: Response) {
-    const authHeader = req.headers["authorization"];
+export async function login(req: Request, res: Response) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ errors: errors.mapped() });
+  }
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return res.status(401).json({ error: "Token não fornecido" });
-    }
+  try {
+    const { nickname, password } = req.body;
+    const { user, token } = await PlayerService.login(nickname, password);
+    return res.status(200).json({ user: toUserDTO(user), token });
+  } catch (err) {
+    return res.status(401).json({ message: "Credenciais inválidas" });
+  }
+}
 
-    const token = authHeader.split(" ")[1];
+export async function guest(req: Request, res: Response) {
+  const nickname = typeof req.body?.nickname === "string" ? req.body.nickname : undefined;
+  const { user, token } = await PlayerService.loginAsGuest(nickname);
+  return res.status(201).json({ user: toUserDTO(user), token });
+}
 
-    const authToken = await AccessTokens.findOne({
-        where: { hash: token }
-    });
+export async function me(req: AuthedRequest, res: Response) {
+  const auth = req.auth;
+  if (!auth) return res.status(401).json({ message: "Não autenticado" });
 
-    if (!authToken) {
-        return res.status(401).json({ error: "Token inválido" });
-    }
+  const user = await PlayerService.findById(auth.userId);
+  if (!user) return res.status(404).json({ message: "Usuário não encontrado" });
 
-    const user = await User.findByPk(authToken.user_id);
-
-    if (!user) {
-        return res.status(404).json({ error: "Usuário não encontrado" });
-    }
-
-    return res.json(user);
+  return res.status(200).json({ user: toUserDTO(user) });
 }

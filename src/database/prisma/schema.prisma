@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MatchStatus {
+  waiting
+  starting
+  playing
+  finished
+}
+
+enum MoveType {
+  play_tile
+  pass_turn
+  draw_tile
+}
+
+model User {
+  id           String   @id @default(uuid())
+  nickname     String   @unique
+  passwordHash String?  @map("password_hash")
+  isGuest      Boolean  @default(false) @map("is_guest")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  matchPlayers MatchPlayer[]
+  gameMoves    GameMove[]
+  ranking      Ranking?
+
+  @@map("users")
+}
+
+model Match {
+  id            String      @id @default(uuid())
+  roomId        String      @unique @map("room_id")
+  status        MatchStatus @default(waiting)
+  winnerTeam    Int?        @map("winner_team")
+  scoreTeamA    Int         @default(0) @map("score_team_a")
+  scoreTeamB    Int         @default(0) @map("score_team_b")
+  startedAt     DateTime?   @map("started_at")
+  finishedAt    DateTime?   @map("finished_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+
+  players MatchPlayer[]
+  moves   GameMove[]
+
+  @@map("matches")
+}
+
+model MatchPlayer {
+  id      String @id @default(uuid())
+  matchId String @map("match_id")
+  userId  String @map("user_id")
+  seat    Int
+  team    Int
+  score   Int    @default(0)
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@unique([matchId, seat])
+  @@map("match_players")
+}
+
+model GameMove {
+  id          String   @id @default(uuid())
+  matchId     String   @map("match_id")
+  userId      String   @map("user_id")
+  type        MoveType
+  tileId      String?  @map("tile_id")
+  side        String?
+  turnNumber  Int      @map("turn_number")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@map("game_moves")
+}
+
+model Ranking {
+  userId    String   @id @map("user_id")
+  wins      Int      @default(0)
+  losses    Int      @default(0)
+  points    Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("rankings")
+}

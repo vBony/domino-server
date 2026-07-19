@@ -1,25 +1,13 @@
-import {Router, Request, Response} from 'express'
-import * as homeController from '../controllers/homeController'
-import {Auth} from '../middlewares/Auth'
-import * as authController from '../controllers/authController'
-import * as authValidator from '../validators/user'
+import { Router } from "express";
+import * as authController from "../controllers/authController";
+import { requireAuth } from "../middlewares/auth";
+import * as authValidator from "../validators/auth";
 
-const router = Router()
+const router = Router();
 
-router.get('/', Auth.private, homeController.home)
-router.get('/contato', homeController.contato)
-router.get('/sobre', homeController.sobre)
+router.post("/auth/register", authValidator.register, authController.register);
+router.post("/auth/login", authValidator.login, authController.login);
+router.post("/auth/guest", authController.guest);
+router.get("/auth/me", requireAuth, authController.me);
 
-/**
- * USER
- */
-router.post('/user', authValidator.register, authController.register)
-
-/**
- * Auth
- */
-router.post('/auth', authController.login)
-router.get('/auth/get-user', authController.getByToken)
-
-
-export default router
+export default router;
