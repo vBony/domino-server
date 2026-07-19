@@ -1,3 +1,4 @@
+import { Prisma } from "../generated/prisma";
 import { Side } from "../game/DominoRules";
 import { prisma } from "../instances/prisma";
 
@@ -9,11 +10,24 @@ export interface SeatAssignment {
   team: number;
 }
 
+// Uma entrada do historico de jogadas de uma partida. Acumulado em memoria
+// pela DominoRoom (this.moveLog) e gravado de uma vez em Match.moves
+// (jsonb) no finishMatch/abortMatch - nao e mais uma linha por jogada no
+// banco (ver schema.prisma para o motivo).
+export interface MoveLogEntry {
+  userId: string;
+  type: MoveType;
+  tileId?: string;
+  side?: Side;
+  turnNumber: number;
+  at: string;
+}
+
 const POINTS_PER_WIN = 10;
 
 // Persistencia da partida: historico de movimentos, jogadores participantes,
 // vencedor, pontuacao e ranking. Chamado pela DominoRoom em pontos-chave do
-// ciclo de vida da partida (inicio, cada jogada valida, fim).
+// ciclo de vida da partida (inicio, fim).
 export class MatchService {
   static async createMatch(roomId: string, seats: SeatAssignment[]) {
     return prisma.match.create({
@@ -28,19 +42,6 @@ export class MatchService {
     });
   }
 
-  static async recordMove(
-    matchId: string,
-    userId: string,
-    type: MoveType,
-    turnNumber: number,
-    tileId?: string,
-    side?: Side
-  ) {
-    await prisma.gameMove.create({
-      data: { matchId, userId, type, turnNumber, tileId, side },
-    });
-  }
-
   // winningTeam null = empate (jogo travado): a partida fica registrada
   // como encerrada sem vencedor e o ranking nao e alterado para ninguem -
   // fica neutro ate existir uma revanche de desempate valendo pontos em dobro.
@@ -49,7 +50,8 @@ export class MatchService {
     winningTeam: number | null,
     scoreTeamA: number,
     scoreTeamB: number,
-    seats: SeatAssignment[]
+    seats: SeatAssignment[],
+    moves: MoveLogEntry[]
   ) {
     await prisma.match.update({
       where: { id: matchId },
@@ -59,6 +61,7 @@ export class MatchService {
         winnerTeam: winningTeam,
         scoreTeamA,
         scoreTeamB,
+        moves: moves as unknown as Prisma.InputJsonValue,
       },
     });
 
@@ -84,10 +87,10 @@ export class MatchService {
     );
   }
 
-  static async abortMatch(matchId: string) {
+  static async abortMatch(matchId: string, moves: MoveLogEntry[]) {
     await prisma.match.update({
       where: { id: matchId },
-      data: { status: "finished", finishedAt: new Date() },
+      data: { status: "finished", finishedAt: new Date(), moves: moves as unknown as Prisma.InputJsonValue },
     });
   }
 }

@@ -25,7 +25,7 @@ export class PlayerService {
   }
 
   static async register(nickname: string, password: string) {
-    const existing = await prisma.user.findUnique({ where: { nickname } });
+    const existing = await prisma.user.findFirst({ where: { nickname, isGuest: false } });
     if (existing) throw new Error("nickname_taken");
 
     const passwordHash = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
@@ -34,7 +34,7 @@ export class PlayerService {
   }
 
   static async login(nickname: string, password: string) {
-    const user = await prisma.user.findUnique({ where: { nickname } });
+    const user = await prisma.user.findFirst({ where: { nickname, isGuest: false } });
     if (!user || !user.passwordHash) throw new Error("invalid_credentials");
 
     const valid = await bcrypt.compare(password, user.passwordHash);
@@ -45,14 +45,12 @@ export class PlayerService {
 
   // Cria um usuario descartavel so para permitir testar o multiplayer sem
   // exigir uma tela de cadastro completa (fica para uma proxima rodada).
-  // Aceita um apelido sugerido pelo cliente; se estiver em uso, cai para um
-  // nome aleatorio em vez de falhar (fluxo de guest deve ser sem friccao).
+  // O apelido sugerido pelo cliente e sempre usado como veio - guests nao
+  // competem por unicidade de nome (nem entre si, nem com contas reais),
+  // so caem para um nome aleatorio se nada for informado.
   static async loginAsGuest(nicknameHint?: string) {
     const trimmedHint = nicknameHint?.trim().slice(0, 20);
-    const username =
-      trimmedHint && !(await prisma.user.findUnique({ where: { nickname: trimmedHint } }))
-        ? trimmedHint
-        : `Guest-${randomUUID().slice(0, 6)}`;
+    const username = trimmedHint && trimmedHint.length > 0 ? trimmedHint : `Guest-${randomUUID().slice(0, 6)}`;
 
     const user = await prisma.user.create({ data: { nickname: username, isGuest: true } });
     return { user, token: this.signToken({ userId: user.id, username: user.nickname }) };

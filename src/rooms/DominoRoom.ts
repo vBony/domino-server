@@ -4,7 +4,7 @@ import { Side, teamOf } from "../game/DominoRules";
 import { DominoState } from "../schemas/DominoState";
 import { PlayerSchema } from "../schemas/PlayerSchema";
 import { TileSchema } from "../schemas/TileSchema";
-import { MatchService, SeatAssignment } from "../services/MatchService";
+import { MatchService, MoveLogEntry, SeatAssignment } from "../services/MatchService";
 import { AuthPayload, PlayerService } from "../services/PlayerService";
 
 interface PlayTileMessage {
@@ -26,6 +26,10 @@ export class DominoRoom extends Room<DominoState> {
   private matchId?: string;
   private readonly seatBySession = new Map<string, number>();
   private readonly sessionBySeat = new Map<number, string>();
+  // Historico de jogadas da partida, acumulado em memoria e gravado de
+  // uma vez em Match.moves (jsonb) no finishMatch/abortMatch - ver
+  // MatchService.MoveLogEntry.
+  private readonly moveLog: MoveLogEntry[] = [];
 
   override onCreate() {
     this.setState(new DominoState());
@@ -95,14 +99,14 @@ export class DominoRoom extends Room<DominoState> {
       this.removePlayer(client.sessionId);
       if (this.matchId && this.state.status === "playing") {
         this.state.status = "finished";
-        await MatchService.abortMatch(this.matchId);
+        await MatchService.abortMatch(this.matchId, this.moveLog);
       }
     }
   }
 
   override async onDispose() {
     if (this.matchId && this.state.status === "playing") {
-      await MatchService.abortMatch(this.matchId);
+      await MatchService.abortMatch(this.matchId, this.moveLog);
     }
   }
 
@@ -248,7 +252,14 @@ export class DominoRoom extends Room<DominoState> {
       side,
     });
 
-    void MatchService.recordMove(this.matchId!, this.userIdForSeat(seat), "play_tile", this.state.turnNumber, tileId, side);
+    this.moveLog.push({
+      userId: this.userIdForSeat(seat),
+      type: "play_tile",
+      tileId,
+      side,
+      turnNumber: this.state.turnNumber,
+      at: new Date().toISOString(),
+    });
 
     const winnerSeat = this.game.winnerSeatByEmptyHand();
     if (winnerSeat !== null) {
@@ -275,7 +286,12 @@ export class DominoRoom extends Room<DominoState> {
     this.state.currentTurn = this.sessionBySeat.get(this.game.currentSeat) ?? "";
 
     this.broadcast("player_passed", { playerId: client.sessionId });
-    void MatchService.recordMove(this.matchId!, this.userIdForSeat(seat), "pass_turn", this.state.turnNumber);
+    this.moveLog.push({
+      userId: this.userIdForSeat(seat),
+      type: "pass_turn",
+      turnNumber: this.state.turnNumber,
+      at: new Date().toISOString(),
+    });
 
     if (this.game.isBlocked()) {
       // Jogo travado (ninguem tem jogada) sempre termina empatado - nao
@@ -311,7 +327,8 @@ export class DominoRoom extends Room<DominoState> {
         winningTeam,
         this.state.scoreTeamA,
         this.state.scoreTeamB,
-        this.seatAssignments()
+        this.seatAssignments(),
+        this.moveLog
       );
     }
 

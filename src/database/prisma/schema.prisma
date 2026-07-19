@@ -15,21 +15,19 @@ enum MatchStatus {
   finished
 }
 
-enum MoveType {
-  play_tile
-  pass_turn
-  draw_tile
-}
-
 model User {
   id           String   @id @default(uuid())
-  nickname     String   @unique
+  // Sem @unique de proposito: guests (isGuest=true) nao sao identidade
+  // persistente que alguem vai reusar, entao nao devem brigar por nome com
+  // ninguem - nem com outro guest, nem com uma conta real. Unicidade real
+  // (pra register/login) e checada na aplicacao so contra isGuest=false
+  // (ver PlayerService.register/login).
+  nickname     String
   passwordHash String?  @map("password_hash")
   isGuest      Boolean  @default(false) @map("is_guest")
   createdAt    DateTime @default(now()) @map("created_at")
 
   matchPlayers MatchPlayer[]
-  gameMoves    GameMove[]
   ranking      Ranking?
 
   @@map("users")
@@ -42,12 +40,17 @@ model Match {
   winnerTeam    Int?        @map("winner_team")
   scoreTeamA    Int         @default(0) @map("score_team_a")
   scoreTeamB    Int         @default(0) @map("score_team_b")
+  // Historico de jogadas (play_tile/pass_turn) como array JSON, nao mais
+  // uma linha por jogada - ninguem consulta jogada individual, e uma
+  // partida inteira acumulada em memoria e gravada de uma vez (junto com
+  // finishMatch/abortMatch) e bem mais barato que N updates no Postgres.
+  // Ver MatchService.MoveLogEntry para o formato de cada item do array.
+  moves         Json        @default("[]")
   startedAt     DateTime?   @map("started_at")
   finishedAt    DateTime?   @map("finished_at")
   createdAt     DateTime    @default(now()) @map("created_at")
 
   players MatchPlayer[]
-  moves   GameMove[]
 
   @@map("matches")
 }
@@ -65,22 +68,6 @@ model MatchPlayer {
 
   @@unique([matchId, seat])
   @@map("match_players")
-}
-
-model GameMove {
-  id          String   @id @default(uuid())
-  matchId     String   @map("match_id")
-  userId      String   @map("user_id")
-  type        MoveType
-  tileId      String?  @map("tile_id")
-  side        String?
-  turnNumber  Int      @map("turn_number")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id])
-
-  @@map("game_moves")
 }
 
 model Ranking {
