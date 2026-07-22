@@ -1,5 +1,13 @@
 import { Tile, generateDeck, shuffle } from "./Deck";
-import { BoardEnds, Side, canPlace, findStartingSeat, hasLegalMove, orientTileForPlacement } from "./DominoRules";
+import {
+  BoardEnds,
+  Side,
+  canPlace,
+  findStartingSeat,
+  hasLegalMove,
+  orientTileForPlacement,
+  wouldBlockGame,
+} from "./DominoRules";
 
 export const TOTAL_SEATS = 4;
 export const HAND_SIZE = 7;
@@ -58,6 +66,20 @@ export class DominoGame {
     const tile = hand.find((t) => t.id === tileId);
     if (!tile) throw new Error("tile_not_in_hand");
     if (!canPlace(tile, side, this.boardEnds)) throw new Error("illegal_move");
+
+    // Nao pode escolher um lado que fecha o jogo se o outro lado da MESMA
+    // peca mantem o jogo aberto (regra confirmada com o usuario, restrita a
+    // escolha entre os dois lados de uma unica peca jogavel nos dois lados).
+    if (this.boardEnds) {
+      const otherSide: Side = side === "left" ? "right" : "left";
+      if (
+        canPlace(tile, otherSide, this.boardEnds) &&
+        wouldBlockGame(this.hands, this.boardEnds, seat, tile, side) &&
+        !wouldBlockGame(this.hands, this.boardEnds, seat, tile, otherSide)
+      ) {
+        throw new Error("must_avoid_blocking");
+      }
+    }
 
     const oriented = orientTileForPlacement(tile, side, this.boardEnds);
     const placed: PlacedTile = { ...oriented, playedBySeat: seat };

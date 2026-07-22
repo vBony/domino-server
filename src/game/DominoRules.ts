@@ -34,6 +34,34 @@ export function hasLegalMove(hand: Tile[], boardEnds: BoardEnds | null): boolean
   return hand.some((t) => canPlace(t, "left", boardEnds) || canPlace(t, "right", boardEnds));
 }
 
+// Simula a jogada (peca "tile" no lado "side") e verifica se, com o
+// tabuleiro resultante, NENHUM assento (considerando as maos reais de todos,
+// menos a peca jogada saindo da mao de quem jogou) teria jogada legal - ou
+// seja, se essa escolha de lado fecha o jogo imediatamente. Usado para a
+// regra "nao pode fechar o jogo escolhendo um lado da peca se o outro lado
+// da mesma peca mantem o jogo aberto".
+export function wouldBlockGame(
+  hands: Map<number, Tile[]>,
+  boardEnds: BoardEnds | null,
+  actingSeat: number,
+  tile: Tile,
+  side: Side
+): boolean {
+  const oriented = orientTileForPlacement(tile, side, boardEnds);
+  const newBoardEnds: BoardEnds = boardEnds
+    ? {
+        left: side === "left" ? oriented.left : boardEnds.left,
+        right: side === "right" ? oriented.right : boardEnds.right,
+      }
+    : { left: oriented.left, right: oriented.right };
+
+  for (const [seat, hand] of hands) {
+    const remainingHand = seat === actingSeat ? hand.filter((t) => t.id !== tile.id) : hand;
+    if (hasLegalMove(remainingHand, newBoardEnds)) return false;
+  }
+  return true;
+}
+
 // Jogador dono da pedra 6|6 comeca a partida; se ninguem tiver (nao deveria
 // acontecer com o deck completo de 28 pecas), comeca quem tem a maior carroca.
 export function findStartingSeat(hands: Map<number, Tile[]>): number {
