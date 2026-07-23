@@ -1,6 +1,6 @@
 import { Client, Room } from "colyseus";
 import { DominoGame, PlayResult, TOTAL_SEATS } from "../game/DominoGame";
-import { Side, teamOf } from "../game/DominoRules";
+import { Side, WIN_BONUS_POINTS, WinReason, teamOf } from "../game/DominoRules";
 import { DominoState } from "../schemas/DominoState";
 import { PlayerSchema } from "../schemas/PlayerSchema";
 import { TileSchema } from "../schemas/TileSchema";
@@ -261,9 +261,8 @@ export class DominoRoom extends Room<DominoState> {
       at: new Date().toISOString(),
     });
 
-    const winnerSeat = this.game.winnerSeatByEmptyHand();
-    if (winnerSeat !== null) {
-      void this.finishMatch(teamOf(winnerSeat), "hand-empty");
+    if (result.winReason !== null) {
+      void this.finishMatch(teamOf(seat), "hand-empty", result.winReason);
       return;
     }
 
@@ -297,7 +296,7 @@ export class DominoRoom extends Room<DominoState> {
       // Jogo travado (ninguem tem jogada) sempre termina empatado - nao
       // decide vencedor por soma de pontos na mao. Uma revanche valendo o
       // dobro de pontos para desempatar fica para uma proxima rodada.
-      void this.finishMatch(null, "blocked");
+      void this.finishMatch(null, "blocked", null);
       return;
     }
 
@@ -313,18 +312,27 @@ export class DominoRoom extends Room<DominoState> {
 
   // winningTeam null = empate (jogo travado). Nesse caso nenhum placar e
   // incrementado - so registra a partida como encerrada sem vencedor.
-  private async finishMatch(winningTeam: number | null, reason: "hand-empty" | "blocked"): Promise<void> {
+  // winKind classifica o tipo de vitoria (gabuada/double-ended/double/comum -
+  // ver DominoRules.classifyHandEmptyWin), sempre null quando e empate.
+  private async finishMatch(
+    winningTeam: number | null,
+    reason: "hand-empty" | "blocked",
+    winKind: WinReason | null
+  ): Promise<void> {
     this.state.status = "finished";
     this.state.winningTeam = winningTeam ?? -1;
+
+    const points = winKind ? WIN_BONUS_POINTS[winKind] : 0;
     if (winningTeam !== null) {
-      this.state.scoreTeamA += winningTeam === 0 ? 1 : 0;
-      this.state.scoreTeamB += winningTeam === 1 ? 1 : 0;
+      this.state.scoreTeamA += winningTeam === 0 ? points : 0;
+      this.state.scoreTeamB += winningTeam === 1 ? points : 0;
     }
 
     if (this.matchId) {
       await MatchService.finishMatch(
         this.matchId,
         winningTeam,
+        points,
         this.state.scoreTeamA,
         this.state.scoreTeamB,
         this.seatAssignments(),
@@ -333,12 +341,13 @@ export class DominoRoom extends Room<DominoState> {
     }
 
     if (winningTeam !== null) {
-      this.broadcast("player_won", { winningTeam, reason });
+      this.broadcast("player_won", { winningTeam, reason, winKind });
     }
     this.broadcast("game_finished", {
       winningTeam,
       isDraw: winningTeam === null,
       reason,
+      winKind,
       scoreTeamA: this.state.scoreTeamA,
       scoreTeamB: this.state.scoreTeamB,
     });

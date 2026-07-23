@@ -23,8 +23,6 @@ export interface MoveLogEntry {
   at: string;
 }
 
-const POINTS_PER_WIN = 10;
-
 // Persistencia da partida: historico de movimentos, jogadores participantes,
 // vencedor, pontuacao e ranking. Chamado pela DominoRoom em pontos-chave do
 // ciclo de vida da partida (inicio, fim).
@@ -45,9 +43,13 @@ export class MatchService {
   // winningTeam null = empate (jogo travado): a partida fica registrada
   // como encerrada sem vencedor e o ranking nao e alterado para ninguem -
   // fica neutro ate existir uma revanche de desempate valendo pontos em dobro.
+  // `points` e o valor da vitoria ja resolvido pela DominoRoom (25/20/15/10 -
+  // ver DominoRules.WIN_BONUS_POINTS) - este service so persiste, nao decide
+  // pontuacao de jogo.
   static async finishMatch(
     matchId: string,
     winningTeam: number | null,
+    points: number,
     scoreTeamA: number,
     scoreTeamB: number,
     seats: SeatAssignment[],
@@ -72,15 +74,15 @@ export class MatchService {
         const won = seat.team === winningTeam;
         await prisma.matchPlayer.updateMany({
           where: { matchId, seat: seat.seat },
-          data: { score: won ? POINTS_PER_WIN : 0 },
+          data: { score: won ? points : 0 },
         });
         await prisma.ranking.upsert({
           where: { userId: seat.userId },
-          create: { userId: seat.userId, wins: won ? 1 : 0, losses: won ? 0 : 1, points: won ? POINTS_PER_WIN : 0 },
+          create: { userId: seat.userId, wins: won ? 1 : 0, losses: won ? 0 : 1, points: won ? points : 0 },
           update: {
             wins: { increment: won ? 1 : 0 },
             losses: { increment: won ? 0 : 1 },
-            points: { increment: won ? POINTS_PER_WIN : 0 },
+            points: { increment: won ? points : 0 },
           },
         });
       })

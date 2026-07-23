@@ -62,6 +62,53 @@ export function wouldBlockGame(
   return true;
 }
 
+// Classificacao da vitoria por mao vazia, do maior para o menor bonus.
+// So uma se aplica por vitoria (a primeira que bater, na ordem abaixo):
+//
+// 1. "gabuada" (25 pts): o vencedor jogou uma pedra comum que fechou uma
+//    ponta com o mesmo numero da bucha que ele guardava, provocando passe
+//    geral (todos os outros 3 assentos passam em sequencia), e na volta do
+//    turno bate com a propria bucha. Nao precisa checar explicitamente "foi
+//    o mesmo jogador que fechou e que bateu" - com 4 assentos fixos e turno
+//    sempre avancando +1 (jogada ou passe), 3 passes consecutivos SO podem
+//    devolver o turno para quem jogou por ultimo (ver DominoGame.playTile).
+//    Por isso "precededByFullPassCycle" ja garante isso sozinho.
+// 2. "double-ended" (15 pts): a ultima pedra encaixava nas duas pontas
+//    abertas no momento da jogada (independente de qual lado foi escolhido).
+// 3. "double" (15 pts, mesmo valor de "double-ended"): a ultima pedra e uma
+//    bucha, sem se encaixar forcosamente nas duas pontas.
+// 4. "common" (10 pts): qualquer outra vitoria por mao vazia.
+export type WinReason = "gabuada" | "double-ended" | "double" | "common";
+
+export const WIN_BONUS_POINTS: Record<WinReason, number> = {
+  gabuada: 25,
+  "double-ended": 15,
+  double: 15,
+  common: 10,
+};
+
+export function classifyHandEmptyWin(
+  tile: Tile,
+  boardEndsBeforePlay: BoardEnds | null,
+  precededByFullPassCycle: boolean
+): WinReason {
+  const isDouble = tile.left === tile.right;
+
+  if (precededByFullPassCycle && isDouble) return "gabuada";
+
+  if (
+    boardEndsBeforePlay &&
+    canPlace(tile, "left", boardEndsBeforePlay) &&
+    canPlace(tile, "right", boardEndsBeforePlay)
+  ) {
+    return "double-ended";
+  }
+
+  if (isDouble) return "double";
+
+  return "common";
+}
+
 // Jogador dono da pedra 6|6 comeca a partida; se ninguem tiver (nao deveria
 // acontecer com o deck completo de 28 pecas), comeca quem tem a maior carroca.
 export function findStartingSeat(hands: Map<number, Tile[]>): number {

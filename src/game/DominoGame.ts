@@ -2,7 +2,9 @@ import { Tile, generateDeck, shuffle } from "./Deck";
 import {
   BoardEnds,
   Side,
+  WinReason,
   canPlace,
+  classifyHandEmptyWin,
   findStartingSeat,
   hasLegalMove,
   orientTileForPlacement,
@@ -19,6 +21,8 @@ export interface PlacedTile extends Tile {
 export interface PlayResult {
   tile: PlacedTile;
   nextSeat: number;
+  // Preenchido so quando essa jogada esvaziou a mao de quem jogou (vitoria).
+  winReason: WinReason | null;
 }
 
 // Unica fonte da verdade da partida: mantem as maos reais (nunca
@@ -81,6 +85,9 @@ export class DominoGame {
       }
     }
 
+    const boardEndsBeforePlay = this.boardEnds;
+    const precededByFullPassCycle = this.passStreak === TOTAL_SEATS - 1;
+
     const oriented = orientTileForPlacement(tile, side, this.boardEnds);
     const placed: PlacedTile = { ...oriented, playedBySeat: seat };
 
@@ -97,14 +104,16 @@ export class DominoGame {
         }
       : { left: oriented.left, right: oriented.right };
 
-    this.hands.set(
-      seat,
-      hand.filter((t) => t.id !== tileId)
-    );
+    const remainingHand = hand.filter((t) => t.id !== tileId);
+    this.hands.set(seat, remainingHand);
+
+    const winReason =
+      remainingHand.length === 0 ? classifyHandEmptyWin(tile, boardEndsBeforePlay, precededByFullPassCycle) : null;
+
     this.passStreak = 0;
     this.advanceTurn();
 
-    return { tile: placed, nextSeat: this.currentSeat };
+    return { tile: placed, nextSeat: this.currentSeat, winReason };
   }
 
   pass(seat: number): number {
@@ -124,13 +133,6 @@ export class DominoGame {
 
   isBlocked(): boolean {
     return this.passStreak >= TOTAL_SEATS;
-  }
-
-  winnerSeatByEmptyHand(): number | null {
-    for (const [seat, hand] of this.hands) {
-      if (hand.length === 0) return seat;
-    }
-    return null;
   }
 
   handsSnapshot(): Map<number, Tile[]> {
